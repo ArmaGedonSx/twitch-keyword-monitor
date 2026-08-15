@@ -16,11 +16,16 @@ import {
   Send,
   X,
   ExternalLink,
+  MessageCircle,
 } from 'lucide-react'
 import { TagInput } from '@/components/tag-input'
 import { HitLog, type Hit } from '@/components/hit-log'
 import { ArmaAlerts } from '@/components/arma-alerts'
-import { DEDUPE_WINDOW_MS, normalizeChatMessage } from '@/lib/message-dedupe'
+import {
+  DEDUPE_WINDOW_MS,
+  normalizeChatMessage,
+  normalizeRepeatedMessage,
+} from '@/lib/message-dedupe'
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error'
 
@@ -34,6 +39,9 @@ type Channel = {
 const STORAGE_KEY = 'twitch-watcher-settings'
 const MAX_HITS = 200
 const ARMA_NAME = 'armagedonsx'
+const REPEAT_THRESHOLD = 3
+const REPEAT_WINDOW_MS = 60_000
+const REPEAT_COOLDOWN_MS = 11 * 60_000
 
 const TWITCH_ICON =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239146ff"%3E%3Cpath d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/%3E%3C/svg%3E'
@@ -55,6 +63,7 @@ export function KeywordWatcher() {
   const [scanned, setScanned] = useState(0)
   const [notify, setNotify] = useState(false)
   const [sound, setSound] = useState(true)
+  const [autoRepeatReply, setAutoRepeatReply] = useState(true)
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [hydrated, setHydrated] = useState(false)
   const [chatChannel, setChatChannel] = useState<string | null>(null)
@@ -83,11 +92,17 @@ export function KeywordWatcher() {
   const joinedRef = useRef<string[]>([])
   const audioCtxRef = useRef<AudioContext | null>(null)
   const dedupeRef = useRef(new Map<string, { id: string; kind: 'keyword' | 'arma'; time: number }>())
+  const repeatMessagesRef = useRef(new Map<string, number[]>())
+  const repeatCooldownRef = useRef(new Map<string, number>())
+  const keywordCooldownRef = useRef(new Map<string, number>())
+  const autoRepeatReplyRef = useRef(autoRepeatReply)
+  const [autoReplyStatus, setAutoReplyStatus] = useState<string | null>(null)
 
   useEffect(() => { keywordsRef.current = keywords }, [keywords])
   useEffect(() => { soundRef.current = sound }, [sound])
   useEffect(() => { notifyRef.current = notify }, [notify])
   useEffect(() => { joinedRef.current = joined }, [joined])
+  useEffect(() => { autoRepeatReplyRef.current = autoRepeatReply }, [autoRepeatReply])
 
   // Load persisted settings once on mount.
   useEffect(() => {
@@ -105,6 +120,7 @@ export function KeywordWatcher() {
           setKeywords(parsed.keywords)
         }
         if (typeof parsed.sound === 'boolean') setSound(parsed.sound)
+        if (typeof parsed.autoRepeatReply === 'boolean') setAutoRepeatReply(parsed.autoRepeatReply)
       }
     } catch {
       // ignore malformed storage
@@ -116,8 +132,8 @@ export function KeywordWatcher() {
   // Persist settings when they change (only after the initial load).
   useEffect(() => {
     if (!hydrated) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ keywords, sound }))
-  }, [hydrated, keywords, sound])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ keywords, sound, autoRepeatReply }))
+  }, [hydrated, keywords, sound, autoRepeatReply])
 
   // Disconnect on unmount.
   useEffect(() => {
@@ -239,6 +255,35 @@ export function KeywordWatcher() {
         channels: [cleanChannel],
       }
 
+      const repeatedMessage = normalizeRepeatedMessage(message)
+      if (repeatedMessage) {
+        const repeatKey = `${cleanChannel}:${repeatedMessage}`
+        const repeatNow = Date.now()
+        const cooldownUntil = repeatCooldownRef.current.get(repeatKey) ?? 0
+        const recent = (repeatMessagesRef.current.get(repeatKey) ?? []).filter(
+          (timestamp) => repeatNow - timestamp <= REPEAT_WINDOW_MS,
+        )
+        if (repeatNow >= cooldownUntil) {
+          recent.push(repeatNow)
+          repeatMessagesRef.current.set(repeatKey, recent)
+          if (recent.length >= REPEAT_THRESHOLD) {
+            repeatCooldownRef.current.set(repeatKey, repeatNow + REPEAT_COOLDOWN_MS)
+            repeatMessagesRef.current.delete(repeatKey)
+            const repeatHit: Hit = {
+              ...baseHit,
+              id: `repeat-${repeatNow}-${Math.random()}`,
+              keywords: [],
+              kind: 'repeat',
+            }
+            setHits((prev) => [repeatHit, ...prev].slice(0, MAX_HITS))
+            playBeep(false)
+            if (autoRepeatReplyRef.current) void sendAutomaticRepeatReply(cleanChannel, message)
+          }
+        } else {
+          repeatMessagesRef.current.set(repeatKey, recent)
+        }
+      }
+
       const dedupeKey = normalizeChatMessage(message)
       const now = Date.now()
       const addOrMerge = (hit: Hit, kind: 'keyword' | 'arma') => {
@@ -283,10 +328,22 @@ export function KeywordWatcher() {
         return
       }
 
-      const matched = keywordsRef.current.filter((kw) => lower.includes(kw))
+      const matched = keywordsRef.current.filter(
+        (kw) => kw.length > 0 && message.includes(kw),
+      )
       if (matched.length === 0) return
 
-      const hit: Hit = { ...baseHit, id: `${tags.id || Date.now()}-${Math.random()}`, keywords: matched }
+      const keywordNow = Date.now()
+      const freshMatched = matched.filter((kw) => {
+        const key = `${cleanChannel}:${kw}`
+        const cooldownUntil = keywordCooldownRef.current.get(key) ?? 0
+        if (keywordNow < cooldownUntil) return false
+        keywordCooldownRef.current.set(key, keywordNow + REPEAT_COOLDOWN_MS)
+        return true
+      })
+      if (freshMatched.length === 0) return
+
+      const hit: Hit = { ...baseHit, id: `${tags.id || Date.now()}-${Math.random()}`, keywords: freshMatched }
       if (!addOrMerge(hit, 'keyword')) return
       setHits((prev) => [hit, ...prev].slice(0, MAX_HITS))
 
@@ -313,6 +370,24 @@ export function KeywordWatcher() {
     clientRef.current = null
     setStatus('idle')
     setJoined([])
+  }
+
+  async function sendAutomaticRepeatReply(channel: string, message: string) {
+    try {
+      const response = await fetch('/api/twitch/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, message: message.trim().slice(0, 500) }),
+      })
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null
+        setAutoReplyStatus(`Automatikus válasz sikertelen: ${data?.error || 'ismeretlen Twitch-hiba'}`)
+        return
+      }
+      setAutoReplyStatus(`Automatikus válasz elküldve: #${channel}`)
+    } catch {
+      setAutoReplyStatus('Automatikus válasz sikertelen: hálózati hiba.')
+    }
   }
 
   const isRunning = status === 'connecting' || status === 'connected'
@@ -404,7 +479,18 @@ export function KeywordWatcher() {
               active={sound}
               onClick={() => setSound((v) => !v)}
             />
+            <ToggleRow
+              icon={<MessageCircle className="size-4" />}
+              label="Automatikus válasz ismétlődésre"
+              description={autoRepeatReply ? 'Bekapcsolva · az ismételt üzenetet küldi' : 'Kikapcsolva'}
+              active={autoRepeatReply}
+              onClick={() => setAutoRepeatReply((v) => !v)}
+            />
           </div>
+
+          {autoReplyStatus && (
+            <p className="text-xs text-muted-foreground" role="status">{autoReplyStatus}</p>
+          )}
 
           {isRunning ? (
             <button

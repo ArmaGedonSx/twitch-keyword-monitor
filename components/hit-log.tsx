@@ -11,6 +11,7 @@ export type Hit = {
   keywords: string[]
   time: number
   channels?: string[]
+  kind?: 'keyword' | 'repeat'
 }
 
 type HitLogProps = {
@@ -94,6 +95,11 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
                   <span className="text-xs tabular-nums text-muted-foreground/70">
                     {formatTime(hit.time)}
                   </span>
+                  {hit.kind === 'repeat' && (
+                    <span className="rounded bg-chart-4/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-chart-4">
+                      Ismétlődő üzenet
+                    </span>
+                  )}
                   {(hit.channels ?? [hit.channel]).map((channel) => (
                     <span key={channel} className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
                       <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(channel) }} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" title={`${channel} chatjének megnyitása`}>#{channel}</button>
