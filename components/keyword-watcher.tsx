@@ -98,7 +98,7 @@ export function KeywordWatcher() {
   const repeatCooldownRef = useRef(new Map<string, number>())
   const keywordCooldownRef = useRef(new Map<string, number>())
   const autoRepeatReplyRef = useRef(autoRepeatReply)
-  const automaticMessageQueueRef = useRef<Array<{ channel: string; message: string }>>([])
+  const automaticMessageQueueRef = useRef<Array<{ channel: string; message: string; priority: boolean }>>([])
   const automaticMessageWorkerRef = useRef(false)
   const [autoReplyStatus, setAutoReplyStatus] = useState<string | null>(null)
 
@@ -323,7 +323,7 @@ export function KeywordWatcher() {
       if (lower.includes(ARMA_NAME)) {
         // Every ArmaGedonSx mention gets the requested immediate response.
         // This intentionally has no 11-minute cooldown.
-        void sendAutomaticChatMessage(cleanChannel, 'Raida')
+        void sendAutomaticChatMessage(cleanChannel, 'Raida', true)
         const armaHit: Hit = { ...baseHit, id: `arma-${tags.id || Date.now()}-${Math.random()}`, keywords: ['ArmaGedonSx'] }
         if (!addOrMerge(armaHit, 'arma')) return
         setArmaHits((prev) => [armaHit, ...prev].slice(0, MAX_HITS))
@@ -377,8 +377,15 @@ export function KeywordWatcher() {
     automaticMessageQueueRef.current = []
   }
 
-  function sendAutomaticChatMessage(channel: string, message: string) {
-    automaticMessageQueueRef.current.push({ channel, message: message.trim().slice(0, 500) })
+  function sendAutomaticChatMessage(channel: string, message: string, priority = false) {
+    const item = { channel, message: message.trim().slice(0, 500), priority }
+    if (priority) {
+      const firstNormalIndex = automaticMessageQueueRef.current.findIndex((queued) => !queued.priority)
+      if (firstNormalIndex === -1) automaticMessageQueueRef.current.push(item)
+      else automaticMessageQueueRef.current.splice(firstNormalIndex, 0, item)
+    } else {
+      automaticMessageQueueRef.current.push(item)
+    }
     if (!automaticMessageWorkerRef.current) void drainAutomaticMessageQueue()
   }
 
