@@ -44,6 +44,7 @@ const REPEAT_THRESHOLD = 3
 const REPEAT_WINDOW_MS = 60_000
 const REPEAT_COOLDOWN_MS = 11 * 60_000
 const AUTOMATIC_SEND_INTERVAL_MS = 1_600
+const MESSAGE_EVENT_DEDUPE_MS = 2 * 60_000
 
 const TWITCH_ICON =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239146ff"%3E%3Cpath d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/%3E%3C/svg%3E'
@@ -97,6 +98,7 @@ export function KeywordWatcher() {
   const repeatMessagesRef = useRef(new Map<string, number[]>())
   const repeatCooldownRef = useRef(new Map<string, number>())
   const keywordCooldownRef = useRef(new Map<string, number>())
+  const seenChatMessageEventsRef = useRef(new Map<string, number>())
   const autoRepeatReplyRef = useRef(autoRepeatReply)
   const automaticMessageQueueRef = useRef<Array<{ channel: string; message: string; priority: boolean }>>([])
   const automaticMessageWorkerRef = useRef(false)
@@ -254,9 +256,28 @@ export function KeywordWatcher() {
 
     client.on('message', (channel, tags, message, self) => {
       if (self) return
+      const cleanChannel = channel.replace('#', '')
+      const senderLogin = tags.username?.toLocaleLowerCase('hu-HU') ?? ''
+      // The read-only tmi.js client cannot mark API-sent messages as `self`.
+      // Do not let this app react to its own ArmaGedonSx responses.
+      if (senderLogin === ARMA_NAME) return
+
+      const sourceMessageId = tags['source-id'] || tags.id
+      if (sourceMessageId) {
+        const eventKey = `${cleanChannel}:${sourceMessageId}`
+        const eventNow = Date.now()
+        const seenAt = seenChatMessageEventsRef.current.get(eventKey)
+        if (seenAt && eventNow - seenAt <= MESSAGE_EVENT_DEDUPE_MS) return
+        seenChatMessageEventsRef.current.set(eventKey, eventNow)
+        for (const [key, timestamp] of seenChatMessageEventsRef.current) {
+          if (eventNow - timestamp > MESSAGE_EVENT_DEDUPE_MS) {
+            seenChatMessageEventsRef.current.delete(key)
+          }
+        }
+      }
+
       setScanned((n) => n + 1)
       const lower = message.toLowerCase()
-      const cleanChannel = channel.replace('#', '')
       const user = tags['display-name'] || tags.username || 'ismeretlen'
       const baseHit = {
         channel: cleanChannel,
@@ -267,8 +288,10 @@ export function KeywordWatcher() {
         channels: [cleanChannel],
       }
 
+      const isKnownChatbot = /nightbot|streamelements|streamlabs|moobot|wizebot|fossabot|chatbot/i.test(senderLogin)
       const repeatedMessage = normalizeRepeatedMessage(message)
-      if (repeatedMessage) {
+      const canTriggerRepeat = repeatedMessage.length > 0 && repeatedMessage.length <= 160 && !/https?:\/\//i.test(repeatedMessage) && !isKnownChatbot
+      if (canTriggerRepeat) {
         const repeatKey = `${cleanChannel}:${repeatedMessage}`
         const repeatNow = Date.now()
         const cooldownUntil = repeatCooldownRef.current.get(repeatKey) ?? 0
