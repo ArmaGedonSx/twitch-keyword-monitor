@@ -82,7 +82,13 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
             {hits.map((hit) => (
               <li
                 key={hit.id}
-                className="rounded-lg border border-transparent px-3 py-2 font-mono text-sm leading-relaxed transition-colors hover:border-border hover:bg-muted/40"
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenChat(hit.channel)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') onOpenChat(hit.channel)
+                }}
+                className="cursor-pointer rounded-lg border border-transparent px-3 py-2 font-mono text-sm leading-relaxed transition-colors hover:border-border hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="text-xs tabular-nums text-muted-foreground/70">
@@ -90,8 +96,8 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
                   </span>
                   {(hit.channels ?? [hit.channel]).map((channel) => (
                     <span key={channel} className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
-                      <button type="button" onClick={() => onOpenChat(channel)} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" title={`${channel} chatjének megnyitása`}>#{channel}</button>
-                      <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} className="text-primary/70 hover:text-primary"><ExternalLink className="size-3" /></a>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(channel) }} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" title={`${channel} chatjének megnyitása`}>#{channel}</button>
+                      <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} onClick={(event) => event.stopPropagation()} className="text-primary/70 hover:text-primary"><ExternalLink className="size-3" /></a>
                     </span>
                   ))}
                   <span

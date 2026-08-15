@@ -57,13 +57,13 @@ export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
         <ol className="flex flex-col gap-2">
           {hits.map((hit) => (
             <li key={hit.id}>
-              <div className="group flex items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15">
+              <div role="button" tabIndex={0} onClick={() => onOpenChat(hit.channel)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onOpenChat(hit.channel) }} className="group flex cursor-pointer items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     {(hit.channels ?? [hit.channel]).map((channel) => (
                       <span key={channel} className="inline-flex items-center gap-1">
-                        <button type="button" onClick={() => onOpenChat(channel)} className="font-semibold text-chart-5 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">#{channel}</button>
-                        <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} className="text-chart-5/70 hover:text-chart-5"><ExternalLink className="size-3" /></a>
+                        <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(channel) }} className="font-semibold text-chart-5 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">#{channel}</button>
+                        <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} onClick={(event) => event.stopPropagation()} className="text-chart-5/70 hover:text-chart-5"><ExternalLink className="size-3" /></a>
                       </span>
                     ))}
                     <span
@@ -80,7 +80,7 @@ export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
                     {hit.message}
                   </p>
                 </div>
-                <button type="button" onClick={() => onOpenChat(hit.channel)} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">Chat megnyitása <ExternalLink className="size-3.5" /></button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(hit.channel) }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">Chat megnyitása <ExternalLink className="size-3.5" /></button>
               </div>
             </li>
           ))}
