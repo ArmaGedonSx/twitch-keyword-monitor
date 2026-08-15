@@ -25,7 +25,7 @@ export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
             <Zap className="size-4 fill-current" />
           </span>
           <h2 className="text-sm font-bold tracking-tight">
-            ArmaGedonSx említések
+            ArmaGedonSx riasztás · lehet, hogy nyertél!
           </h2>
           <span className="rounded-full bg-chart-5/25 px-2 py-0.5 font-mono text-xs font-semibold text-chart-5">
             {hits.length}
@@ -45,11 +45,12 @@ export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
 
       {hits.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Amint valaki leírja chatben az{' '}
+          Amint egy streamer chatjében megjelenik az{' '}
           <span className="font-mono font-semibold text-chart-5">
             ArmaGedonSx
           </span>{' '}
-          nevet, itt jelenik meg egy kattintható riasztás.
+          neved (pl. nyertesként kihirdetve), itt villan fel egy kattintható
+          riasztás, hogy azonnal a csatornára ugorhass.
         </p>
       ) : (
         <ol className="flex flex-col gap-2">
