@@ -49,7 +49,7 @@ function formatTime(ts: number) {
 
 export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
   return (
-    <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
+    <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <div className="flex items-center gap-2">
           <Radar className="size-4 text-primary" />
@@ -69,7 +69,7 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
         </button>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="p-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {hits.length === 0 ? (
           <div className="flex h-full min-h-[16rem] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <Radar className="size-8 opacity-40" />

@@ -17,6 +17,7 @@ import {
   X,
   ExternalLink,
   MessageCircle,
+  ChevronDown,
 } from 'lucide-react'
 import { TagInput } from '@/components/tag-input'
 import { HitLog, type Hit } from '@/components/hit-log'
@@ -422,7 +423,7 @@ export function KeywordWatcher() {
   const canStart = channelLogins.length > 0 && keywords.length > 0
 
   return (
-    <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-4 overflow-hidden px-4 py-4 md:gap-6 md:px-6 md:py-6">
+    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-4 overflow-visible px-4 py-4 md:gap-6 md:px-6 md:py-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -446,9 +447,9 @@ export function KeywordWatcher() {
       {/* ArmaGedonSx — prominent, always visible */}
       <ArmaAlerts hits={armaHits} onClear={() => setArmaHits([])} onOpenChat={setChatChannel} />
 
-      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-6">
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-6">
         {/* Control panel */}
-        <div className="flex min-h-0 max-h-[38vh] flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-4 sm:p-5 lg:max-h-none lg:overflow-hidden">
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5 lg:min-h-0 lg:overflow-hidden">
           <ChannelSource
             category={data?.category}
             channels={liveChannels}
@@ -617,16 +618,25 @@ function ChannelSource({
   onRefresh: () => void
   onOpenChat: (channel: string) => void
 }) {
+  const [open, setOpen] = useState(true)
+
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-1.5 text-sm font-medium">
-          <Users className="size-4 text-primary" />
-          Élő csatornák
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="live-channel-list"
+          onClick={() => setOpen((value) => !value)}
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+        >
+          <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
+          <Users className="size-4 shrink-0 text-primary" />
+          <span>Élő csatornák</span>
           <span className="rounded-full bg-primary/15 px-2 py-0.5 font-mono text-xs font-semibold text-primary">
             {channels.length}
           </span>
-        </span>
+        </button>
         <button
           type="button"
           onClick={onRefresh}
@@ -639,7 +649,7 @@ function ChannelSource({
         </button>
       </div>
 
-      <div className="rounded-lg border border-border bg-input/30 p-2">
+      {open && <div id="live-channel-list" className="rounded-lg border border-border bg-input/30 p-2">
         {isLoading ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">
             NextWorld2 csatornák betöltése…
@@ -673,7 +683,7 @@ function ChannelSource({
             ))}
           </ul>
         )}
-      </div>
+      </div>}
     </div>
   )
 }
