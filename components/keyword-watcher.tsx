@@ -277,7 +277,7 @@ export function KeywordWatcher() {
             }
             setHits((prev) => [repeatHit, ...prev].slice(0, MAX_HITS))
             playBeep(false)
-            if (autoRepeatReplyRef.current) void sendAutomaticRepeatReply(cleanChannel, message)
+            if (autoRepeatReplyRef.current) void sendAutomaticChatMessage(cleanChannel, message)
           }
         } else {
           repeatMessagesRef.current.set(repeatKey, recent)
@@ -309,6 +309,9 @@ export function KeywordWatcher() {
 
       // Priority: ArmaGedonSx mention (your name → possible win).
       if (lower.includes(ARMA_NAME)) {
+        // Every ArmaGedonSx mention gets the requested immediate response.
+        // This intentionally has no 11-minute cooldown.
+        void sendAutomaticChatMessage(cleanChannel, 'Raida')
         const armaHit: Hit = { ...baseHit, id: `arma-${tags.id || Date.now()}-${Math.random()}`, keywords: ['ArmaGedonSx'] }
         if (!addOrMerge(armaHit, 'arma')) return
         setArmaHits((prev) => [armaHit, ...prev].slice(0, MAX_HITS))
@@ -372,7 +375,7 @@ export function KeywordWatcher() {
     setJoined([])
   }
 
-  async function sendAutomaticRepeatReply(channel: string, message: string) {
+  async function sendAutomaticChatMessage(channel: string, message: string) {
     try {
       const response = await fetch('/api/twitch/send-message', {
         method: 'POST',
