@@ -1,6 +1,6 @@
 'use client'
 
-import { Radar, Trash2 } from 'lucide-react'
+import { ExternalLink, Radar, Trash2 } from 'lucide-react'
 
 export type Hit = {
   id: string
@@ -10,11 +10,13 @@ export type Hit = {
   message: string
   keywords: string[]
   time: number
+  channels?: string[]
 }
 
 type HitLogProps = {
   hits: Hit[]
   onClear: () => void
+  onOpenChat: (channel: string) => void
 }
 
 function highlight(message: string, keywords: string[]) {
@@ -44,7 +46,7 @@ function formatTime(ts: number) {
   })
 }
 
-export function HitLog({ hits, onClear }: HitLogProps) {
+export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
   return (
     <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card">
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -86,14 +88,12 @@ export function HitLog({ hits, onClear }: HitLogProps) {
                   <span className="text-xs tabular-nums text-muted-foreground/70">
                     {formatTime(hit.time)}
                   </span>
-                  <a
-                    href={`https://twitch.tv/${hit.channel}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/25"
-                  >
-                    #{hit.channel}
-                  </a>
+                  {(hit.channels ?? [hit.channel]).map((channel) => (
+                    <span key={channel} className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
+                      <button type="button" onClick={() => onOpenChat(channel)} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" title={`${channel} chatjének megnyitása`}>#{channel}</button>
+                      <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} className="text-primary/70 hover:text-primary"><ExternalLink className="size-3" /></a>
+                    </span>
+                  ))}
                   <span
                     className="font-semibold"
                     style={hit.color ? { color: hit.color } : undefined}

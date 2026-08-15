@@ -13,10 +13,14 @@ import {
   Radio,
   RefreshCw,
   Users,
+  Send,
+  X,
+  ExternalLink,
 } from 'lucide-react'
 import { TagInput } from '@/components/tag-input'
 import { HitLog, type Hit } from '@/components/hit-log'
 import { ArmaAlerts } from '@/components/arma-alerts'
+import { DEDUPE_WINDOW_MS, normalizeChatMessage } from '@/lib/message-dedupe'
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error'
 
@@ -53,6 +57,7 @@ export function KeywordWatcher() {
   const [sound, setSound] = useState(true)
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [hydrated, setHydrated] = useState(false)
+  const [chatChannel, setChatChannel] = useState<string | null>(null)
 
   const {
     data,
@@ -77,15 +82,18 @@ export function KeywordWatcher() {
   const notifyRef = useRef(notify)
   const joinedRef = useRef<string[]>([])
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const dedupeRef = useRef(new Map<string, { id: string; kind: 'keyword' | 'arma'; time: number }>())
 
-  keywordsRef.current = keywords
-  soundRef.current = sound
-  notifyRef.current = notify
-  joinedRef.current = joined
+  useEffect(() => { keywordsRef.current = keywords }, [keywords])
+  useEffect(() => { soundRef.current = sound }, [sound])
+  useEffect(() => { notifyRef.current = notify }, [notify])
+  useEffect(() => { joinedRef.current = joined }, [joined])
 
   // Load persisted settings once on mount.
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
+      // Browser permission is an external value that must be read after mount.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermission(Notification.permission)
       setNotify(Notification.permission === 'granted')
     }
@@ -142,8 +150,9 @@ export function KeywordWatcher() {
     if (!soundRef.current) return
     try {
       if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)()
+        const AudioContextConstructor = window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        audioCtxRef.current = new AudioContextConstructor()
       }
       const ctx = audioCtxRef.current
       const tones = arma
@@ -180,8 +189,9 @@ export function KeywordWatcher() {
     // Prime the audio context on user gesture so beeps work later.
     try {
       if (!audioCtxRef.current) {
-        audioCtxRef.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)()
+        const AudioContextConstructor = window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        audioCtxRef.current = new AudioContextConstructor()
       }
       await audioCtxRef.current.resume()
     } catch {
@@ -226,20 +236,37 @@ export function KeywordWatcher() {
         color: tags.color || undefined,
         message,
         time: Date.now(),
+        channels: [cleanChannel],
+      }
+
+      const dedupeKey = normalizeChatMessage(message)
+      const now = Date.now()
+      const addOrMerge = (hit: Hit, kind: 'keyword' | 'arma') => {
+        if (!dedupeKey) return true
+        const key = `${kind}:${dedupeKey}`
+        const previous = dedupeRef.current.get(key)
+        if (previous && now - previous.time <= DEDUPE_WINDOW_MS) {
+          const merge = (items: Hit[]) => items.map((item) => item.id === previous.id
+            ? { ...item, channels: Array.from(new Set([...(item.channels ?? [item.channel]), cleanChannel])) }
+            : item)
+          if (kind === 'arma') setArmaHits(merge)
+          else setHits(merge)
+          previous.time = now
+          return false
+        }
+        const next = { id: hit.id, kind, time: now }
+        dedupeRef.current.set(key, next)
+        for (const [storedKey, entry] of dedupeRef.current) {
+          if (now - entry.time > DEDUPE_WINDOW_MS) dedupeRef.current.delete(storedKey)
+        }
+        return true
       }
 
       // Priority: ArmaGedonSx mention (your name → possible win).
       if (lower.includes(ARMA_NAME)) {
-        setArmaHits((prev) =>
-          [
-            {
-              ...baseHit,
-              id: `arma-${tags.id || Date.now()}-${Math.random()}`,
-              keywords: ['ArmaGedonSx'],
-            },
-            ...prev,
-          ].slice(0, MAX_HITS),
-        )
+        const armaHit: Hit = { ...baseHit, id: `arma-${tags.id || Date.now()}-${Math.random()}`, keywords: ['ArmaGedonSx'] }
+        if (!addOrMerge(armaHit, 'arma')) return
+        setArmaHits((prev) => [armaHit, ...prev].slice(0, MAX_HITS))
         playBeep(true)
         if (notifyRef.current && Notification.permission === 'granted') {
           const n = new Notification(`🎉 ArmaGedonSx említve — #${cleanChannel}`, {
@@ -259,16 +286,9 @@ export function KeywordWatcher() {
       const matched = keywordsRef.current.filter((kw) => lower.includes(kw))
       if (matched.length === 0) return
 
-      setHits((prev) =>
-        [
-          {
-            ...baseHit,
-            id: `${tags.id || Date.now()}-${Math.random()}`,
-            keywords: matched,
-          },
-          ...prev,
-        ].slice(0, MAX_HITS),
-      )
+      const hit: Hit = { ...baseHit, id: `${tags.id || Date.now()}-${Math.random()}`, keywords: matched }
+      if (!addOrMerge(hit, 'keyword')) return
+      setHits((prev) => [hit, ...prev].slice(0, MAX_HITS))
 
       playBeep(false)
 
@@ -299,7 +319,7 @@ export function KeywordWatcher() {
   const canStart = channelLogins.length > 0 && keywords.length > 0
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-6 px-4 py-6 md:px-6 md:py-10">
+    <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col gap-4 overflow-hidden px-4 py-4 md:gap-6 md:px-6 md:py-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -321,11 +341,11 @@ export function KeywordWatcher() {
       </header>
 
       {/* ArmaGedonSx — prominent, always visible */}
-      <ArmaAlerts hits={armaHits} onClear={() => setArmaHits([])} />
+      <ArmaAlerts hits={armaHits} onClear={() => setArmaHits([])} onOpenChat={setChatChannel} />
 
-      <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-6">
         {/* Control panel */}
-        <div className="flex flex-col gap-5 rounded-xl border border-border bg-card p-5">
+        <div className="flex min-h-0 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-card p-5">
           <ChannelSource
             category={data?.category}
             channels={liveChannels}
@@ -333,6 +353,7 @@ export function KeywordWatcher() {
             isValidating={isValidating}
             error={channelsError ? true : data?.error}
             onRefresh={() => mutate()}
+            onOpenChat={setChatChannel}
           />
 
           <TagInput
@@ -413,7 +434,53 @@ export function KeywordWatcher() {
         </div>
 
         {/* Log */}
-        <HitLog hits={hits} onClear={() => setHits([])} />
+        <HitLog hits={hits} onClear={() => setHits([])} onOpenChat={setChatChannel} />
+      </div>
+      {chatChannel && <ChatComposer channel={chatChannel} onClose={() => setChatChannel(null)} />}
+    </div>
+  )
+}
+
+function ChatComposer({ channel, onClose }: { channel: string; onClose: () => void }) {
+  const [message, setMessage] = useState('')
+  const [state, setState] = useState<'idle' | 'sending' | 'success' | 'error'>('idle')
+  const [error, setError] = useState('')
+  const [authRequired, setAuthRequired] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  async function send() {
+    if (!message.trim() || state === 'sending') return
+    setState('sending'); setError(''); setAuthRequired(false)
+    try {
+      const response = await fetch('/api/twitch/send-message', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, message }) })
+      const data = (await response.json()) as { error?: string; authRequired?: boolean }
+      if (!response.ok) { setError(data.error || 'Nem sikerült elküldeni.'); setAuthRequired(Boolean(data.authRequired)); setState('error'); return }
+      setMessage(''); setState('success')
+    } catch { setError('Hálózati hiba történt.'); setState('error') }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="chat-composer-title" className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div><h2 id="chat-composer-title" className="font-semibold">Üzenet küldése</h2><p className="mt-1 text-sm text-muted-foreground">Célchat: <span className="font-mono text-primary">#{channel}</span></p></div>
+          <button type="button" onClick={onClose} aria-label="Bezárás" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
+        </div>
+        <form onSubmit={(event) => { event.preventDefault(); void send() }} className="flex gap-2">
+          <input ref={inputRef} value={message} onChange={(event) => { setMessage(event.target.value); if (state !== 'idle') setState('idle') }} placeholder="Kulcsszó vagy saját üzenet" maxLength={500} className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+          <button type="submit" disabled={!message.trim() || state === 'sending'} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Send className="size-4" /> Küldés</button>
+        </form>
+        {state === 'sending' && <p className="mt-3 text-sm text-muted-foreground">Küldés…</p>}
+        {state === 'success' && <p className="mt-3 text-sm text-accent" role="status">Üzenet elküldve.</p>}
+        {state === 'error' && <div className="mt-3 space-y-2 text-sm text-destructive" role="alert"><p>{error}</p>{authRequired && <a href="/api/twitch/auth/start?returnTo=/" className="inline-block underline underline-offset-2">Twitch engedélyezése</a>}</div>}
+        <p className="mt-3 text-xs text-muted-foreground">A küldéshez Twitch OAuth engedély kell, és csak a Küldés gomb megnyomásakor történik API-hívás.</p>
       </div>
     </div>
   )
@@ -426,6 +493,7 @@ function ChannelSource({
   isValidating,
   error,
   onRefresh,
+  onOpenChat,
 }: {
   category?: string
   channels: Channel[]
@@ -433,6 +501,7 @@ function ChannelSource({
   isValidating: boolean
   error?: boolean | string
   onRefresh: () => void
+  onOpenChat: (channel: string) => void
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -477,17 +546,15 @@ function ChannelSource({
           <ul className="flex max-h-40 flex-col gap-0.5 overflow-y-auto">
             {channels.map((c) => (
               <li key={c.login}>
-                <a
-                  href={`https://twitch.tv/${c.login}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-2 rounded px-2 py-1 text-xs transition-colors hover:bg-muted"
-                >
+                <div className="flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors hover:bg-muted">
+                  <button type="button" onClick={() => onOpenChat(c.login)} className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                   <span className="truncate font-medium">{c.name}</span>
+                  </button>
+                  <a href={`https://twitch.tv/${c.login}`} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} Twitch-oldalának megnyitása`} className="shrink-0 text-muted-foreground hover:text-foreground"><ExternalLink className="size-3" /></a>
                   <span className="shrink-0 font-mono tabular-nums text-muted-foreground">
                     {c.viewers.toLocaleString('hu-HU')}
                   </span>
-                </a>
+                </div>
               </li>
             ))}
           </ul>

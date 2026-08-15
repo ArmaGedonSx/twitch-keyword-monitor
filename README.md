@@ -1,5 +1,20 @@
 # twitch-keyword-monitor
 
+## Twitch chatküldés beállítása
+
+Az olvasás továbbra is anonim tmi.js-kapcsolattal történik. Chatüzenet küldéséhez a felhasználónak Twitch OAuth engedélyezést kell adnia; a kliens nem kap tokent, és üzenet csak a Küldés gomb felhasználói megnyomására megy ki.
+
+A Twitch Developer Console-ban állítsd be az OAuth redirect URL-t, majd ezeket a szerveroldali Vercel environment variable-öket:
+
+```text
+TWITCH_CLIENT_ID=...
+TWITCH_CLIENT_SECRET=...
+TWITCH_OAUTH_REDIRECT_URI=https://twitch-keyword-monitor.vercel.app/api/twitch/auth/callback
+TWITCH_TOKEN_ENCRYPTION_KEY=<hosszú véletlen titok>
+```
+
+A `TWITCH_CLIENT_ID` és `TWITCH_CLIENT_SECRET` a meglévő csatornalekérdezéshez is szükséges. A `TWITCH_TOKEN_ENCRYPTION_KEY` ne kerüljön Gitbe vagy `NEXT_PUBLIC_*` változóba. A token titkosított, httpOnly cookie-ban tárolódik, ezért Vercel több példánya között is továbbadható, de a felhasználónak újra kell engedélyeznie, ha a cookie lejár vagy törlődik. A Twitch-fióknak a célchatben megfelelő jogosultsággal kell rendelkeznie; ezt a Twitch szabályozza.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
 ## Built with v0

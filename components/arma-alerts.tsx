@@ -6,6 +6,7 @@ import type { Hit } from '@/components/hit-log'
 type ArmaAlertsProps = {
   hits: Hit[]
   onClear: () => void
+  onOpenChat: (channel: string) => void
 }
 
 function formatTime(ts: number) {
@@ -16,7 +17,7 @@ function formatTime(ts: number) {
   })
 }
 
-export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
+export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
   return (
     <section className="rounded-xl border-2 border-chart-5/60 bg-chart-5/10 p-4 shadow-[0_0_0_1px_theme(colors.chart-5/20%)]">
       <header className="mb-3 flex items-center justify-between gap-2">
@@ -56,17 +57,15 @@ export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
         <ol className="flex flex-col gap-2">
           {hits.map((hit) => (
             <li key={hit.id}>
-              <a
-                href={`https://twitch.tv/${hit.channel}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15"
-              >
+              <div className="group flex items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15">
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex flex-wrap items-baseline gap-x-2">
-                    <span className="font-semibold text-chart-5">
-                      #{hit.channel}
-                    </span>
+                    {(hit.channels ?? [hit.channel]).map((channel) => (
+                      <span key={channel} className="inline-flex items-center gap-1">
+                        <button type="button" onClick={() => onOpenChat(channel)} className="font-semibold text-chart-5 underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">#{channel}</button>
+                        <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} className="text-chart-5/70 hover:text-chart-5"><ExternalLink className="size-3" /></a>
+                      </span>
+                    ))}
                     <span
                       className="font-mono text-sm font-semibold"
                       style={hit.color ? { color: hit.color } : undefined}
@@ -81,11 +80,8 @@ export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
                     {hit.message}
                   </p>
                 </div>
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">
-                  Megnyitás
-                  <ExternalLink className="size-3.5" />
-                </span>
-              </a>
+                <button type="button" onClick={() => onOpenChat(hit.channel)} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">Chat megnyitása <ExternalLink className="size-3.5" /></button>
+              </div>
             </li>
           ))}
         </ol>
