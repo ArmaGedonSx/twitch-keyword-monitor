@@ -43,6 +43,7 @@ const ARMA_NAME = 'armagedonsx'
 const REPEAT_THRESHOLD = 3
 const REPEAT_WINDOW_MS = 60_000
 const REPEAT_COOLDOWN_MS = 11 * 60_000
+const AUTOMATIC_SEND_INTERVAL_MS = 1_600
 
 const TWITCH_ICON =
   'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%239146ff"%3E%3Cpath d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/%3E%3C/svg%3E'
@@ -97,6 +98,8 @@ export function KeywordWatcher() {
   const repeatCooldownRef = useRef(new Map<string, number>())
   const keywordCooldownRef = useRef(new Map<string, number>())
   const autoRepeatReplyRef = useRef(autoRepeatReply)
+  const automaticMessageQueueRef = useRef<Array<{ channel: string; message: string }>>([])
+  const automaticMessageWorkerRef = useRef(false)
   const [autoReplyStatus, setAutoReplyStatus] = useState<string | null>(null)
 
   useEffect(() => { keywordsRef.current = keywords }, [keywords])
@@ -371,23 +374,42 @@ export function KeywordWatcher() {
     clientRef.current = null
     setStatus('idle')
     setJoined([])
+    automaticMessageQueueRef.current = []
   }
 
-  async function sendAutomaticChatMessage(channel: string, message: string) {
+  function sendAutomaticChatMessage(channel: string, message: string) {
+    automaticMessageQueueRef.current.push({ channel, message: message.trim().slice(0, 500) })
+    if (!automaticMessageWorkerRef.current) void drainAutomaticMessageQueue()
+  }
+
+  async function drainAutomaticMessageQueue() {
+    if (automaticMessageWorkerRef.current) return
+    automaticMessageWorkerRef.current = true
     try {
-      const response = await fetch('/api/twitch/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, message: message.trim().slice(0, 500) }),
-      })
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as { error?: string } | null
-        setAutoReplyStatus(`Automatikus válasz sikertelen: ${data?.error || 'ismeretlen Twitch-hiba'}`)
-        return
+      while (automaticMessageQueueRef.current.length > 0) {
+        const next = automaticMessageQueueRef.current.shift()
+        if (!next) break
+        try {
+          const response = await fetch('/api/twitch/send-message', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(next),
+          })
+          const data = (await response.json().catch(() => null)) as { error?: string } | null
+          if (!response.ok) {
+            setAutoReplyStatus(`Automatikus válasz sikertelen: ${data?.error || 'ismeretlen Twitch-hiba'}`)
+          } else {
+            setAutoReplyStatus(`Automatikus válasz elküldve: #${next.channel}`)
+          }
+        } catch {
+          setAutoReplyStatus('Automatikus válasz sikertelen: hálózati hiba.')
+        }
+        if (automaticMessageQueueRef.current.length > 0) {
+          await new Promise((resolve) => window.setTimeout(resolve, AUTOMATIC_SEND_INTERVAL_MS))
+        }
       }
-      setAutoReplyStatus(`Automatikus válasz elküldve: #${channel}`)
-    } catch {
-      setAutoReplyStatus('Automatikus válasz sikertelen: hálózati hiba.')
+    } finally {
+      automaticMessageWorkerRef.current = false
     }
   }
 

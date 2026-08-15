@@ -42,9 +42,19 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({ broadcaster_id: broadcasterId, sender_id: session.user_id, message }),
       cache: 'no-store',
     })
+    const sendData = (await sendResponse.json().catch(() => null)) as {
+      data?: Array<{ is_sent?: boolean; drop_reason?: { message?: string } }>
+      message?: string
+    } | null
     if (!sendResponse.ok) {
-      const details = (await sendResponse.json().catch(() => null)) as { message?: string } | null
-      return NextResponse.json({ error: details?.message || 'A Twitch nem fogadta el az üzenetet. Lehet, hogy nincs jogosultságod ebben a chatben.' }, { status: sendResponse.status })
+      return NextResponse.json({ error: sendData?.message || 'A Twitch nem fogadta el az üzenetet. Lehet, hogy nincs jogosultságod ebben a chatben.' }, { status: sendResponse.status })
+    }
+    const result = sendData?.data?.[0]
+    if (result?.is_sent === false) {
+      return NextResponse.json(
+        { error: result.drop_reason?.message || 'A Twitch nem küldte el az üzenetet.' },
+        { status: 429 },
+      )
     }
     return NextResponse.json({ ok: true })
   } catch (error) {
