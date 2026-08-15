@@ -19,13 +19,13 @@ function formatTime(ts: number) {
 
 export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
   return (
-    <section className="rounded-xl border-2 border-chart-5/60 bg-chart-5/10 p-4 shadow-[0_0_0_1px_theme(colors.chart-5/20%)]">
-      <header className="mb-3 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+    <section className="rounded-xl border-2 border-chart-5/60 bg-chart-5/10 p-3 shadow-[0_0_0_1px_theme(colors.chart-5/20%)] sm:p-4">
+      <header className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-start gap-2">
           <span className="flex size-7 items-center justify-center rounded-full bg-chart-5/25 text-chart-5">
             <Zap className="size-4 fill-current" />
           </span>
-          <h2 className="text-sm font-bold tracking-tight">
+          <h2 className="text-xs font-bold leading-snug tracking-tight sm:text-sm">
             ArmaGedonSx riasztás · lehet, hogy nyertél!
           </h2>
           <span className="rounded-full bg-chart-5/25 px-2 py-0.5 font-mono text-xs font-semibold text-chart-5">

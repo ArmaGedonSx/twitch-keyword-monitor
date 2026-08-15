@@ -14,6 +14,12 @@ export const metadata: Metadata = {
   description:
     'Figyeld több Twitch csatorna chatjét egyszerre, és kapj azonnali értesítést a megadott kulcsszavakról (drop, kód, nyeremény).',
   generator: 'v0.app',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Twitch Figyelő',
+    statusBarStyle: 'black-translucent',
+  },
   icons: {
     icon: [
       {

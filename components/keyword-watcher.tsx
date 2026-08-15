@@ -104,6 +104,11 @@ export function KeywordWatcher() {
   useEffect(() => { joinedRef.current = joined }, [joined])
   useEffect(() => { autoRepeatReplyRef.current = autoRepeatReply }, [autoRepeatReply])
 
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    void navigator.serviceWorker.register('/sw.js')
+  }, [])
+
   // Load persisted settings once on mount.
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
@@ -195,6 +200,9 @@ export function KeywordWatcher() {
 
   async function requestPermission() {
     if (typeof Notification === 'undefined') return
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.ready.catch(() => undefined)
+    }
     const result = await Notification.requestPermission()
     setPermission(result)
     setNotify(result === 'granted')
@@ -316,18 +324,11 @@ export function KeywordWatcher() {
         if (!addOrMerge(armaHit, 'arma')) return
         setArmaHits((prev) => [armaHit, ...prev].slice(0, MAX_HITS))
         playBeep(true)
-        if (notifyRef.current && Notification.permission === 'granted') {
-          const n = new Notification(`🎉 ArmaGedonSx említve — #${cleanChannel}`, {
-            body: `${user}: ${message}`,
-            icon: TWITCH_ICON,
-            tag: `arma-${cleanChannel}`,
-            requireInteraction: true,
-          })
-          n.onclick = () => {
-            window.open(`https://twitch.tv/${cleanChannel}`, '_blank')
-            n.close()
-          }
-        }
+        void showAppNotification(
+          `🎉 Lehetséges nyerés — #${cleanChannel}`,
+          `${user}: ${message}`,
+          { tag: `arma-${cleanChannel}`, requireInteraction: true, winning: true },
+        )
         return
       }
 
@@ -352,13 +353,9 @@ export function KeywordWatcher() {
 
       playBeep(false)
 
-      if (notifyRef.current && Notification.permission === 'granted') {
-        new Notification(`Találat: #${cleanChannel}`, {
-          body: `${user}: ${message}`,
-          icon: TWITCH_ICON,
-          tag: cleanChannel,
-        })
-      }
+      void showAppNotification(`Találat: #${cleanChannel}`, `${user}: ${message}`, {
+        tag: cleanChannel,
+      })
     })
 
     try {
@@ -393,6 +390,34 @@ export function KeywordWatcher() {
     }
   }
 
+  async function showAppNotification(
+    title: string,
+    body: string,
+    options: { tag: string; requireInteraction?: boolean; winning?: boolean },
+  ) {
+    if (!notifyRef.current || typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    const notificationOptions = {
+      body,
+      icon: TWITCH_ICON,
+      badge: '/icon-dark-32x32.png',
+      tag: options.tag,
+      requireInteraction: options.requireInteraction ?? false,
+      vibrate: options.winning ? [250, 100, 250, 100, 700] : [150, 100, 250],
+      data: { url: `https://twitch.tv/${options.tag.replace(/^arma-/, '')}` },
+    }
+    try {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready
+        await registration.showNotification(title, notificationOptions)
+        return
+      }
+      const notification = new Notification(title, notificationOptions)
+      notification.onclick = () => window.open(`https://twitch.tv/${options.tag.replace(/^arma-/, '')}`, '_blank')
+    } catch {
+      // Notifications may be unavailable or blocked by the mobile browser.
+    }
+  }
+
   const isRunning = status === 'connecting' || status === 'connected'
   const canStart = channelLogins.length > 0 && keywords.length > 0
 
@@ -421,9 +446,9 @@ export function KeywordWatcher() {
       {/* ArmaGedonSx — prominent, always visible */}
       <ArmaAlerts hits={armaHits} onClear={() => setArmaHits([])} onOpenChat={setChatChannel} />
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-6">
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-6">
         {/* Control panel */}
-        <div className="flex min-h-0 flex-col gap-4 overflow-hidden rounded-xl border border-border bg-card p-5">
+        <div className="flex min-h-0 max-h-[38vh] flex-col gap-4 overflow-y-auto rounded-xl border border-border bg-card p-4 sm:p-5 lg:max-h-none lg:overflow-hidden">
           <ChannelSource
             category={data?.category}
             channels={liveChannels}
