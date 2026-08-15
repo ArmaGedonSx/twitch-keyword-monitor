@@ -1,0 +1,94 @@
+'use client'
+
+import { Zap, ExternalLink, Trash2 } from 'lucide-react'
+import type { Hit } from '@/components/hit-log'
+
+type ArmaAlertsProps = {
+  hits: Hit[]
+  onClear: () => void
+}
+
+function formatTime(ts: number) {
+  return new Date(ts).toLocaleTimeString('hu-HU', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+}
+
+export function ArmaAlerts({ hits, onClear }: ArmaAlertsProps) {
+  return (
+    <section className="rounded-xl border-2 border-chart-5/60 bg-chart-5/10 p-4 shadow-[0_0_0_1px_theme(colors.chart-5/20%)]">
+      <header className="mb-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex size-7 items-center justify-center rounded-full bg-chart-5/25 text-chart-5">
+            <Zap className="size-4 fill-current" />
+          </span>
+          <h2 className="text-sm font-bold tracking-tight">
+            ArmaGedonSx említések
+          </h2>
+          <span className="rounded-full bg-chart-5/25 px-2 py-0.5 font-mono text-xs font-semibold text-chart-5">
+            {hits.length}
+          </span>
+        </div>
+        {hits.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-chart-5/15 hover:text-foreground"
+          >
+            <Trash2 className="size-3.5" />
+            Ürítés
+          </button>
+        )}
+      </header>
+
+      {hits.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Amint valaki leírja chatben az{' '}
+          <span className="font-mono font-semibold text-chart-5">
+            ArmaGedonSx
+          </span>{' '}
+          nevet, itt jelenik meg egy kattintható riasztás.
+        </p>
+      ) : (
+        <ol className="flex flex-col gap-2">
+          {hits.map((hit) => (
+            <li key={hit.id}>
+              <a
+                href={`https://twitch.tv/${hit.channel}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15"
+              >
+                <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <div className="flex flex-wrap items-baseline gap-x-2">
+                    <span className="font-semibold text-chart-5">
+                      #{hit.channel}
+                    </span>
+                    <span
+                      className="font-mono text-sm font-semibold"
+                      style={hit.color ? { color: hit.color } : undefined}
+                    >
+                      {hit.user}
+                    </span>
+                    <span className="text-xs tabular-nums text-muted-foreground/70">
+                      {formatTime(hit.time)}
+                    </span>
+                  </div>
+                  <p className="truncate font-mono text-sm text-foreground/90">
+                    {hit.message}
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">
+                  Megnyitás
+                  <ExternalLink className="size-3.5" />
+                </span>
+              </a>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
