@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
-import type { Client } from 'tmi.js'
+import type { ChatUserstate, Client } from 'tmi.js'
 import {
   Bell,
   BellOff,
@@ -27,6 +27,19 @@ import {
   normalizeChatMessage,
   normalizeRepeatedMessage,
 } from '@/lib/message-dedupe'
+
+// tmi.js emits USERNOTICE announcements as `usernotice`, but @types/tmi.js
+// does not declare this runtime event yet.
+declare module 'tmi.js' {
+  interface Events {
+    usernotice(
+      messageType: string,
+      channel: string,
+      userstate: ChatUserstate,
+      message: string,
+    ): void
+  }
+}
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error'
 
@@ -254,7 +267,12 @@ export function KeywordWatcher() {
       }
     })
 
-    client.on('message', (channel, tags, message, self) => {
+    const handleIncomingMessage = (
+      channel: string,
+      tags: ChatUserstate,
+      message: string,
+      self = false,
+    ) => {
       if (self) return
       const cleanChannel = channel.replace('#', '')
       const senderLogin = tags.username?.toLocaleLowerCase('hu-HU') ?? ''
@@ -385,6 +403,13 @@ export function KeywordWatcher() {
       void showAppNotification(`Találat: #${cleanChannel}`, `${user}: ${message}`, {
         tag: cleanChannel,
       })
+    }
+
+    client.on('message', handleIncomingMessage)
+    client.on('usernotice', (messageType, channel, tags, message) => {
+      if (messageType === 'announcement' && message) {
+        handleIncomingMessage(channel, tags as ChatUserstate, message)
+      }
     })
 
     try {
