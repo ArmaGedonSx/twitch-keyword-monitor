@@ -278,6 +278,8 @@ export function KeywordWatcher() {
 
       setScanned((n) => n + 1)
       const lower = message.toLowerCase()
+      const replyParentLogin = tags['reply-parent-user-login']?.toLocaleLowerCase('hu-HU') ?? ''
+      const isArmaMention = lower.includes(ARMA_NAME) || replyParentLogin === ARMA_NAME
       const user = tags['display-name'] || tags.username || 'ismeretlen'
       const baseHit = {
         channel: cleanChannel,
@@ -343,7 +345,7 @@ export function KeywordWatcher() {
       }
 
       // Priority: ArmaGedonSx mention (your name → possible win).
-      if (lower.includes(ARMA_NAME)) {
+      if (isArmaMention) {
         // Every ArmaGedonSx mention gets the requested immediate response.
         // This intentionally has no 11-minute cooldown.
         void sendAutomaticChatMessage(cleanChannel, 'Raida', true)
