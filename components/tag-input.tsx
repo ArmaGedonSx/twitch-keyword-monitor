@@ -54,25 +54,25 @@ export function TagInput({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <label className="px-1 text-xs font-semibold text-muted-foreground">
         {label}
       </label>
       <div
-        className={`flex flex-wrap items-center gap-2 rounded-lg border border-input bg-input/40 p-2 transition-colors focus-within:border-ring ${
+        className={`flex min-h-12 flex-wrap items-center gap-2 rounded-2xl border border-transparent bg-input/60 p-2 transition-shadow focus-within:ring-2 focus-within:ring-ring ${
           disabled ? 'opacity-60' : ''
         }`}
       >
         {values.map((tag) => (
           <span
             key={tag}
-            className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 font-mono text-xs ${chipClass}`}
+            className={`inline-flex min-h-8 items-center gap-1 rounded-full border px-2.5 py-1 font-mono text-xs ${chipClass}`}
           >
             {tag}
             <button
               type="button"
               onClick={() => remove(tag)}
               disabled={disabled}
-              className="rounded-sm opacity-70 transition-opacity hover:opacity-100 disabled:cursor-not-allowed"
+              className="inline-flex size-6 items-center justify-center rounded-full opacity-70 transition-opacity hover:opacity-100 disabled:cursor-not-allowed"
               aria-label={`${tag} eltávolítása`}
             >
               <X className="size-3" />
@@ -87,7 +87,7 @@ export function TagInput({
           onBlur={() => commit(draft)}
           disabled={disabled}
           placeholder={values.length === 0 ? placeholder : ''}
-          className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-sm text-foreground outline-none placeholder:text-muted-foreground/60 disabled:cursor-not-allowed"
+          className="min-w-[8rem] flex-1 bg-transparent px-1 py-1 text-base text-foreground outline-none placeholder:text-muted-foreground/70 disabled:cursor-not-allowed sm:text-sm"
         />
       </div>
     </div>

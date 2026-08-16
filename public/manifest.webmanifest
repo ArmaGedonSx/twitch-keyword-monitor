@@ -4,8 +4,10 @@
   "description": "NextWorld2 Twitch-chatek kulcsszó- és nyerésfigyelője.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0e0e10",
-  "theme_color": "#0e0e10",
+  "background_color": "#f5f5f7",
+  "theme_color": "#007aff",
+  "orientation": "any",
+  "categories": ["utilities", "entertainment"],
   "lang": "hu",
   "icons": [
     {

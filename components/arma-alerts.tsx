@@ -19,24 +19,22 @@ function formatTime(ts: number) {
 
 export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
   return (
-    <section className="rounded-xl border-2 border-chart-5/60 bg-chart-5/10 p-3 shadow-[0_0_0_1px_theme(colors.chart-5/20%)] sm:p-4">
+    <section className="surface-shadow rounded-3xl border border-chart-5/30 bg-card p-4 sm:p-5">
       <header className="mb-3 flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-start gap-2">
-          <span className="flex size-7 items-center justify-center rounded-full bg-chart-5/25 text-chart-5">
-            <Zap className="size-4 fill-current" />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-[13px] bg-chart-5 text-white shadow-sm">
+            <Zap className="size-5 fill-current" />
           </span>
-          <h2 className="text-xs font-bold leading-snug tracking-tight sm:text-sm">
-            ArmaGedonSx riasztás · lehet, hogy nyertél!
-          </h2>
-          <span className="rounded-full bg-chart-5/25 px-2 py-0.5 font-mono text-xs font-semibold text-chart-5">
-            {hits.length}
-          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold leading-snug tracking-tight sm:text-base">ArmaGedonSx riasztás</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">Lehet, hogy nyertél · {hits.length} riasztás</p>
+          </div>
         </div>
         {hits.length > 0 && (
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-chart-5/15 hover:text-foreground"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground transition-colors hover:bg-chart-5/15 hover:text-foreground"
           >
             <Trash2 className="size-3.5" />
             Ürítés
@@ -57,7 +55,7 @@ export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
         <ol className="flex flex-col gap-2">
           {hits.map((hit) => (
             <li key={hit.id}>
-              <div role="button" tabIndex={0} onClick={() => onOpenChat(hit.channel)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onOpenChat(hit.channel) }} className="group flex cursor-pointer items-center gap-3 rounded-lg border border-chart-5/40 bg-background/60 px-3 py-3 transition-colors hover:border-chart-5 hover:bg-chart-5/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+              <div role="button" tabIndex={0} onClick={() => onOpenChat(hit.channel)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onOpenChat(hit.channel) }} className="group flex cursor-pointer items-center gap-3 rounded-2xl bg-chart-5/8 px-3 py-3 transition-colors hover:bg-chart-5/14 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                   <div className="flex flex-wrap items-baseline gap-x-2">
                     {(hit.channels ?? [hit.channel]).map((channel) => (
@@ -80,7 +78,7 @@ export function ArmaAlerts({ hits, onClear, onOpenChat }: ArmaAlertsProps) {
                     {hit.message}
                   </p>
                 </div>
-                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(hit.channel) }} className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/20 px-2.5 py-1.5 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-background">Chat megnyitása <ExternalLink className="size-3.5" /></button>
+                <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(hit.channel) }} className="inline-flex min-h-10 shrink-0 items-center gap-1 rounded-full bg-chart-5/15 px-3 text-xs font-semibold text-chart-5 transition-colors group-hover:bg-chart-5 group-hover:text-white">Chat <ExternalLink className="size-3.5" /></button>
               </div>
             </li>
           ))}

@@ -49,8 +49,8 @@ function formatTime(ts: number) {
 
 export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
   return (
-    <section className="flex flex-col rounded-xl border border-border bg-card lg:min-h-0 lg:flex-1">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
+    <section className="surface-shadow flex flex-col overflow-hidden rounded-3xl border border-white/50 bg-card dark:border-white/10 lg:min-h-0 lg:flex-1">
+      <header className="flex min-h-14 items-center justify-between border-b border-border px-4 py-3 sm:px-5">
         <div className="flex items-center gap-2">
           <Radar className="size-4 text-primary" />
           <h2 className="text-sm font-semibold">Találatok</h2>
@@ -62,14 +62,14 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
           type="button"
           onClick={onClear}
           disabled={hits.length === 0}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Trash2 className="size-3.5" />
           Ürítés
         </button>
       </header>
 
-      <div className="p-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+      <div className="p-2 sm:p-3 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {hits.length === 0 ? (
           <div className="flex h-full min-h-[16rem] flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <Radar className="size-8 opacity-40" />
@@ -89,7 +89,7 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') onOpenChat(hit.channel)
                 }}
-                className="cursor-pointer rounded-lg border border-transparent px-3 py-2 font-mono text-sm leading-relaxed transition-colors hover:border-border hover:bg-muted/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                className="cursor-pointer rounded-2xl border border-transparent px-3 py-2.5 font-mono text-sm leading-relaxed transition-colors hover:border-border hover:bg-muted/65 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:px-4"
               >
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                   <span className="text-xs tabular-nums text-muted-foreground/70">
@@ -101,7 +101,7 @@ export function HitLog({ hits, onClear, onOpenChat }: HitLogProps) {
                     </span>
                   )}
                   {(hit.channels ?? [hit.channel]).map((channel) => (
-                    <span key={channel} className="inline-flex items-center gap-1 rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
+                    <span key={channel} className="inline-flex items-center gap-1 rounded-full bg-primary/12 px-2 py-0.5 text-xs font-semibold text-primary">
                       <button type="button" onClick={(event) => { event.stopPropagation(); onOpenChat(channel) }} className="hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" title={`${channel} chatjének megnyitása`}>#{channel}</button>
                       <a href={`https://twitch.tv/${channel}`} target="_blank" rel="noopener noreferrer" aria-label={`${channel} Twitch-oldalának megnyitása`} onClick={(event) => event.stopPropagation()} className="text-primary/70 hover:text-primary"><ExternalLink className="size-3" /></a>
                     </span>

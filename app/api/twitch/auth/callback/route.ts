@@ -1,23 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createCipheriv, createHash, randomBytes } from 'node:crypto'
+import { setTwitchSessionCookie } from '@/lib/twitch-chat-session'
 
 export const dynamic = 'force-dynamic'
 
 type TwitchToken = { access_token: string; refresh_token: string; expires_in: number }
-type Session = TwitchToken & { user_id: string; expires_at: number }
-
-function encryptionKey() {
-  const secret = process.env.TWITCH_TOKEN_ENCRYPTION_KEY
-  if (!secret) throw new Error('Hiányzik a TWITCH_TOKEN_ENCRYPTION_KEY.')
-  return createHash('sha256').update(secret).digest()
-}
-
-function seal(session: Session) {
-  const iv = randomBytes(12)
-  const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv)
-  const encrypted = Buffer.concat([cipher.update(JSON.stringify(session), 'utf8'), cipher.final()])
-  return [iv.toString('base64url'), cipher.getAuthTag().toString('base64url'), encrypted.toString('base64url')].join('.')
-}
 
 export async function GET(request: NextRequest) {
   const stateCookie = request.cookies.get('twitch_oauth_state')?.value
@@ -54,12 +40,10 @@ export async function GET(request: NextRequest) {
 
     const response = NextResponse.redirect(new URL(returnTo, request.url))
     response.cookies.delete('twitch_oauth_state')
-    response.cookies.set('twitch_chat_session', seal({ ...token, user_id: userId, expires_at: Date.now() + token.expires_in * 1000 }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 30,
-      path: '/',
+    setTwitchSessionCookie(response, {
+      ...token,
+      user_id: userId,
+      expires_at: Date.now() + token.expires_in * 1000,
     })
     return response
   } catch (error) {

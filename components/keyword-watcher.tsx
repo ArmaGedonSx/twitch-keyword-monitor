@@ -18,6 +18,8 @@ import {
   ExternalLink,
   MessageCircle,
   ChevronDown,
+  Moon,
+  Sun,
 } from 'lucide-react'
 import { TagInput } from '@/components/tag-input'
 import { HitLog, type Hit } from '@/components/hit-log'
@@ -83,6 +85,7 @@ export function KeywordWatcher() {
   const [permission, setPermission] = useState<NotificationPermission>('default')
   const [hydrated, setHydrated] = useState(false)
   const [chatChannel, setChatChannel] = useState<string | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>('light')
 
   const {
     data,
@@ -122,6 +125,20 @@ export function KeywordWatcher() {
   useEffect(() => { notifyRef.current = notify }, [notify])
   useEffect(() => { joinedRef.current = joined }, [joined])
   useEffect(() => { autoRepeatReplyRef.current = autoRepeatReply }, [autoRepeatReply])
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light')
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
+  function toggleTheme() {
+    const next = theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.classList.toggle('dark', next === 'dark')
+    localStorage.setItem('twitch-watcher-theme', next)
+    setTheme(next)
+  }
 
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
@@ -502,33 +519,42 @@ export function KeywordWatcher() {
   const canStart = channelLogins.length > 0 && keywords.length > 0
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col gap-4 overflow-visible px-4 py-4 md:gap-6 md:px-6 md:py-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="safe-top safe-bottom mx-auto flex min-h-dvh max-w-7xl flex-col gap-4 overflow-visible px-3 md:gap-5 md:px-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
+      <header className="surface-shadow flex flex-col gap-3 rounded-2xl border border-white/40 bg-card/85 p-3 backdrop-blur-xl dark:border-white/10 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={TWITCH_ICON || '/placeholder.svg'} alt="" className="size-8" />
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-[13px] bg-primary shadow-sm">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={TWITCH_ICON || '/placeholder.svg'} alt="" className="size-6 brightness-0 invert" />
+          </span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-balance">
+            <h1 className="text-xl font-semibold tracking-[-0.025em] text-balance">
               NextWorld2 Chat Figyelő
             </h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-0.5 text-[13px] text-muted-foreground">
               Az összes élő NextWorld2 csatorna chatje egyszerre
             </p>
           </div>
         </div>
-        <StatusPill
-          status={status}
-          joined={joined}
-          total={channelLogins.length}
-        />
+        <div className="flex items-center justify-between gap-2 sm:justify-end">
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="inline-flex size-11 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            aria-label={theme === 'dark' ? 'Világos mód bekapcsolása' : 'Sötét mód bekapcsolása'}
+            title={theme === 'dark' ? 'Világos mód' : 'Sötét mód'}
+          >
+            {theme === 'dark' ? <Sun className="size-[18px]" /> : <Moon className="size-[18px]" />}
+          </button>
+          <StatusPill status={status} joined={joined} total={channelLogins.length} />
+        </div>
       </header>
 
       {/* ArmaGedonSx — prominent, always visible */}
       <ArmaAlerts hits={armaHits} onClear={() => setArmaHits([])} onOpenChat={setChatChannel} />
 
-      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-6">
+      <div className="grid gap-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[minmax(20rem,23rem)_minmax(0,1fr)] lg:grid-rows-1 lg:gap-5">
         {/* Control panel */}
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 sm:p-5 lg:min-h-0 lg:overflow-hidden">
+        <div className="surface-shadow flex flex-col gap-4 rounded-3xl border border-white/50 bg-card p-4 dark:border-white/10 sm:p-5 lg:min-h-0 lg:overflow-y-auto">
           <ChannelSource
             category={data?.category}
             channels={liveChannels}
@@ -547,7 +573,7 @@ export function KeywordWatcher() {
             accent="accent"
           />
 
-          <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <div className="flex flex-col gap-2 border-t border-border pt-4">
             <ToggleRow
               icon={
                 permission === 'granted' ? (
@@ -604,7 +630,7 @@ export function KeywordWatcher() {
             <button
               type="button"
               onClick={stop}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-destructive px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             >
               <Square className="size-4 fill-current" />
               Figyelés leállítása
@@ -614,7 +640,7 @@ export function KeywordWatcher() {
               type="button"
               onClick={start}
               disabled={!canStart}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Play className="size-4 fill-current" />
               Figyelés indítása
@@ -661,15 +687,16 @@ function ChatComposer({ channel, onClose }: { channel: string; onClose: () => vo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <div role="dialog" aria-modal="true" aria-labelledby="chat-composer-title" className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 backdrop-blur-sm sm:items-center sm:p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="chat-composer-title" className="safe-bottom surface-shadow w-full max-w-md rounded-t-3xl border border-border bg-popover p-5 sm:rounded-3xl sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
-          <div><h2 id="chat-composer-title" className="font-semibold">Üzenet küldése</h2><p className="mt-1 text-sm text-muted-foreground">Célchat: <span className="font-mono text-primary">#{channel}</span></p></div>
-          <button type="button" onClick={onClose} aria-label="Bezárás" className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"><X className="size-4" /></button>
+          <div><h2 id="chat-composer-title" className="text-lg font-semibold tracking-tight">Üzenet küldése</h2><p className="mt-1 text-sm text-muted-foreground">Célchat: <span className="font-mono font-semibold text-primary">#{channel}</span></p></div>
+          <button type="button" onClick={onClose} aria-label="Bezárás" className="inline-flex size-11 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground"><X className="size-5" /></button>
         </div>
-        <form onSubmit={(event) => { event.preventDefault(); void send() }} className="flex gap-2">
-          <input ref={inputRef} value={message} onChange={(event) => { setMessage(event.target.value); if (state !== 'idle') setState('idle') }} placeholder="Kulcsszó vagy saját üzenet" maxLength={500} className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-          <button type="submit" disabled={!message.trim() || state === 'sending'} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Send className="size-4" /> Küldés</button>
+        <form onSubmit={(event) => { event.preventDefault(); void send() }} className="flex flex-col gap-3 sm:flex-row">
+          <label htmlFor="chat-message" className="sr-only">Chatüzenet</label>
+          <input id="chat-message" ref={inputRef} value={message} onChange={(event) => { setMessage(event.target.value); if (state !== 'idle') setState('idle') }} placeholder="Kulcsszó vagy saját üzenet" maxLength={500} className="min-h-11 min-w-0 flex-1 rounded-2xl border border-input bg-input/60 px-4 py-2 text-base outline-none transition-shadow placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring" />
+          <button type="submit" disabled={!message.trim() || state === 'sending'} className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"><Send className="size-4" /> Küldés</button>
         </form>
         {state === 'sending' && <p className="mt-3 text-sm text-muted-foreground">Küldés…</p>}
         {state === 'success' && <p className="mt-3 text-sm text-accent" role="status">Üzenet elküldve.</p>}
@@ -707,7 +734,7 @@ function ChannelSource({
           aria-expanded={open}
           aria-controls="live-channel-list"
           onClick={() => setOpen((value) => !value)}
-          className="flex min-h-11 min-w-0 flex-1 items-center gap-1.5 rounded-lg text-left text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-xl px-1 text-left text-sm font-medium transition-colors hover:bg-muted/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           <ChevronDown className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? '' : '-rotate-90'}`} />
           <Users className="size-4 shrink-0 text-primary" />
@@ -719,7 +746,7 @@ function ChannelSource({
         <button
           type="button"
           onClick={onRefresh}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-3 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <RefreshCw
             className={`size-3.5 ${isValidating ? 'animate-spin' : ''}`}
@@ -728,7 +755,7 @@ function ChannelSource({
         </button>
       </div>
 
-      {open && <div id="live-channel-list" className="rounded-lg border border-border bg-input/30 p-2">
+      {open && <div id="live-channel-list" className="rounded-2xl bg-input/60 p-2">
         {isLoading ? (
           <p className="px-1 py-2 text-xs text-muted-foreground">
             NextWorld2 csatornák betöltése…
@@ -749,7 +776,7 @@ function ChannelSource({
           <ul className="flex max-h-40 flex-col gap-0.5 overflow-y-auto">
             {channels.map((c) => (
               <li key={c.login}>
-                <div className="flex items-center gap-2 rounded px-2 py-1 text-xs transition-colors hover:bg-muted">
+                <div className="flex min-h-10 items-center gap-2 rounded-xl px-2 py-1 text-xs transition-colors hover:bg-card">
                   <button type="button" onClick={() => onOpenChat(c.login)} className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
                   <span className="truncate font-medium">{c.name}</span>
                   </button>
@@ -796,7 +823,7 @@ function StatusPill({
   }
   const c = config[status]
   return (
-    <div className="inline-flex items-center gap-2 self-start rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium sm:self-auto">
+    <div className="inline-flex min-h-11 items-center gap-2 self-start rounded-full bg-muted px-3.5 py-1.5 text-sm font-medium sm:self-auto">
       {status === 'connected' ? (
         <Radio className={`size-4 ${c.text}`} />
       ) : (
@@ -827,7 +854,7 @@ function ToggleRow({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-input/30 px-3 py-2.5 text-left transition-colors hover:bg-input/50 disabled:cursor-not-allowed disabled:opacity-50"
+      className="flex min-h-14 items-center justify-between gap-3 rounded-2xl bg-input/60 px-3.5 py-2.5 text-left transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span className="flex items-center gap-2.5">
         <span className={active ? 'text-primary' : 'text-muted-foreground'}>
@@ -839,12 +866,12 @@ function ToggleRow({
         </span>
       </span>
       <span
-        className={`flex h-5 w-9 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+        className={`flex h-6 w-10 shrink-0 items-center rounded-full p-0.5 transition-colors ${
           active ? 'bg-primary' : 'bg-muted'
         }`}
       >
         <span
-          className={`size-4 rounded-full bg-white transition-transform ${
+          className={`size-5 rounded-full bg-white shadow-sm transition-transform ${
             active ? 'translate-x-4' : 'translate-x-0'
           }`}
         />
@@ -863,7 +890,7 @@ function Stat({
   accent?: boolean
 }) {
   return (
-    <div className="rounded-lg border border-border bg-input/30 px-3 py-2.5">
+    <div className="rounded-2xl bg-input/60 px-3.5 py-3">
       <div
         className={`font-mono text-2xl font-bold tabular-nums ${
           accent ? 'text-accent' : 'text-foreground'

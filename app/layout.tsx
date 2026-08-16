@@ -1,19 +1,22 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-})
+const themeScript = `
+  (() => {
+    try {
+      const stored = localStorage.getItem('twitch-watcher-theme');
+      const dark = stored ? stored === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+      document.documentElement.classList.toggle('dark', dark);
+    } catch {}
+  })();
+`
 
 export const metadata: Metadata = {
   title: 'Twitch Kulcsszó Figyelő',
   description:
     'Figyeld több Twitch csatorna chatjét egyszerre, és kapj azonnali értesítést a megadott kulcsszavakról (drop, kód, nyeremény).',
-  generator: 'v0.app',
+  applicationName: 'Twitch Figyelő',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -40,8 +43,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'dark',
-  themeColor: '#0e0e10',
+  colorScheme: 'light dark',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f5f7' },
+    { media: '(prefers-color-scheme: dark)', color: '#1c1c1e' },
+  ],
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -50,10 +57,10 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="hu"
-      className={`bg-background ${inter.variable} ${jetbrainsMono.variable}`}
-    >
+    <html lang="hu" className="bg-background" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

@@ -2,7 +2,7 @@
 
 ## Twitch chatküldés beállítása
 
-Az olvasás továbbra is anonim tmi.js-kapcsolattal történik. Chatüzenet küldéséhez a felhasználónak Twitch OAuth engedélyezést kell adnia; a kliens nem kap tokent, és üzenet csak a Küldés gomb felhasználói megnyomására megy ki.
+Az olvasás továbbra is anonim tmi.js-kapcsolattal történik. Chatüzenet küldéséhez a felhasználónak Twitch OAuth engedélyezést kell adnia; a kliens nem kap tokent. A kézi üzenet csak a Küldés gomb felhasználói megnyomására megy ki, az engedélyezett automatikus válaszok pedig a figyelő meglévő szabályai alapján futnak.
 
 A Twitch Developer Console-ban állítsd be az OAuth redirect URL-t, majd ezeket a szerveroldali Vercel environment variable-öket:
 
@@ -13,7 +13,11 @@ TWITCH_OAUTH_REDIRECT_URI=https://twitch-keyword-monitor.vercel.app/api/twitch/a
 TWITCH_TOKEN_ENCRYPTION_KEY=<hosszú véletlen titok>
 ```
 
-A `TWITCH_CLIENT_ID` és `TWITCH_CLIENT_SECRET` a meglévő csatornalekérdezéshez is szükséges. A `TWITCH_TOKEN_ENCRYPTION_KEY` ne kerüljön Gitbe vagy `NEXT_PUBLIC_*` változóba. A token titkosított, httpOnly cookie-ban tárolódik, ezért Vercel több példánya között is továbbadható, de a felhasználónak újra kell engedélyeznie, ha a cookie lejár vagy törlődik. A Twitch-fióknak a célchatben megfelelő jogosultsággal kell rendelkeznie; ezt a Twitch szabályozza.
+A `TWITCH_CLIENT_ID` és `TWITCH_CLIENT_SECRET` a meglévő csatornalekérdezéshez is szükséges. A `TWITCH_TOKEN_ENCRYPTION_KEY` ne kerüljön Gitbe vagy `NEXT_PUBLIC_*` változóba. A hozzáférési és refresh token titkosított, httpOnly cookie-ban tárolódik, ezért Vercel több példánya között is továbbadható. A szerver a hozzáférési tokent lejárat előtt automatikusan frissíti, Twitch `401` válasznál pedig egyszer frissít és újrapróbálja a küldést. Manuális engedélyezés csak visszavont/érvénytelen refresh token, törölt vagy 30 nap után lejárt cookie esetén szükséges. A Twitch-fióknak a célchatben megfelelő jogosultsággal kell rendelkeznie; ezt a Twitch szabályozza.
+
+## PWA és témák
+
+Az app telepíthető PWA (`manifest.webmanifest`, standalone mód és service worker). iPhone-on a Safari Megosztás menüjében a **Főképernyőhöz adás**, Androidon/Chrome-ban az **Alkalmazás telepítése** használható. A világos és sötét mód a fejlécben váltható; a választás a böngészőben megmarad, első használatkor pedig a rendszer témáját követi.
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
 
